@@ -1,4 +1,46 @@
 services:
+  backend:
+    profiles: [app]
+    build:
+      context: .
+      target: development
+    command: npm run dev -w backend
+    environment:
+      # El .env local puede contener una URL hacia 127.0.0.1.
+      # Dentro de Docker se usa el servicio db definido más abajo.
+      DATABASE_URL: ""
+      DB_HOST: db
+      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
+      DB_PORT: 5432
+      HOST: 0.0.0.0
+      PORT: 3000
+      APP_ORIGIN: ${APP_ORIGIN:-http://127.0.0.1:5173}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - .:/app
+      - dependencias_node:/app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    profiles: [app]
+    build:
+      context: .
+      target: development
+    command: npm run dev -w frontend -- --host 0.0.0.0
+    environment:
+      API_PROXY_TARGET: http://backend:3000
+    ports:
+      - "127.0.0.1:5173:5173"
+    volumes:
+      - .:/app
+      - dependencias_node:/app/node_modules
+    depends_on:
+      - backend
+
   db:
     image: postgres:17-bookworm
     environment:
@@ -20,3 +62,4 @@ services:
 
 volumes:
   datos_postgres:
+  dependencias_node:
