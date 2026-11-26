@@ -5,7 +5,7 @@ export default function AuthLayout({ children }) {
     <div className="auth-shell min-h-dvh bg-lb-fondo text-lb-texto">
       <a className="skip-link" href="#contenido">Saltar al contenido</a>
       <header className="brand-header">
-        <Link to="/iniciar-sesion" className="brand" aria-label="LeetBattle, inicio">
+        <Link to="/" className="brand" aria-label="LeetBattle, inicio">
           <span className="brand-mark"><img src="/logo-leetbattle.png" alt="" width="1304" height="1212" /></span>
           <span>LeetBattle</span>
         </Link>

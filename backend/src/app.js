@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import { createAuthRouter } from './auth/router.js';
+import { createEjerciciosRouter } from './ejercicios/router.js';
 
 export function createApp({ pool, sessionSecret, production = false, origin, authLimit }) {
   const app = express();
@@ -32,6 +33,7 @@ export function createApp({ pool, sessionSecret, production = false, origin, aut
     cookie: { httpOnly: true, sameSite: 'lax', secure: production, maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' },
   }));
   app.use('/api/auth', createAuthRouter({ pool, production, limit: authLimit }));
+  app.use('/api/ejercicios', createEjerciciosRouter({ pool }));
   app.use('/api', (_req, res) => res.status(404).json({ message: 'Ruta no encontrada.' }));
 
   const frontendPath = fileURLToPath(new URL('../../frontend/dist/', import.meta.url));

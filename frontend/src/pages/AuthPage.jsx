@@ -31,7 +31,7 @@ export default function AuthPage({ register = false, onAuthenticated }) {
       await (register ? auth.register(values) : auth.login(values));
       const { user } = await auth.me();
       onAuthenticated(user);
-      navigate('/cuenta', { replace: true });
+      navigate('/', { replace: true });
     } catch (error) {
       setErrors(error.fields || {});
       setMessage(error.message);

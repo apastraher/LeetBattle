@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import pg from 'pg';
 import { config } from '../../backend/src/config.js';
 
-test('registro, recarga, cierre de sesión y acceso con un usuario real', async ({ page }) => {
+test('registro, recarga, menú de perfil, cierre de sesión y acceso con un usuario real', async ({ page }, testInfo) => {
   const alias = `e2e_${randomUUID().replaceAll('-', '').slice(0, 12)}`;
   const email = `${alias}@example.com`;
   const password = 'Prueba segura 123 ñ';
@@ -19,12 +19,59 @@ test('registro, recarga, cierre de sesión y acceso con un usuario real', async 
     await expect(page.getByLabel('Repite la contraseña', { exact: true })).toBeFocused();
     await page.getByLabel('Repite la contraseña', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Regístrate', exact: true }).click();
-    await expect(page.getByRole('heading', { name: `Hola, ${alias}` })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Piensa. Programa. Compite.' })).toBeVisible();
+    await expect(page.getByRole('img', { name: `Avatar de ${alias}` })).toBeVisible();
     const cookie = (await page.context().cookies()).find(({ name }) => name === 'leetbattle.sid');
     expect(cookie.httpOnly).toBe(true);
     await page.reload();
-    await expect(page.getByRole('heading', { name: `Hola, ${alias}` })).toBeVisible();
-    await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+    await expect(page.getByRole('img', { name: `Avatar de ${alias}` })).toBeVisible();
+    const trigger = page.getByRole('button', { name: 'Menú de perfil', exact: true });
+    const menu = page.getByRole('menu', { name: 'Menú de perfil' });
+    await trigger.focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(menu.getByRole('menuitem', { name: 'Perfil', exact: true })).toBeFocused();
+    await expect(page.locator('.profile-identity')).toContainText(alias);
+    await expect(page.locator('.profile-identity')).toContainText(email);
+    await page.keyboard.press('ArrowDown');
+    await expect(menu.getByRole('menuitem', { name: 'Cerrar sesión' })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(menu).not.toBeVisible();
+    await expect(trigger).toBeFocused();
+    await trigger.click();
+    await page.getByRole('heading', { name: 'Piensa. Programa. Compite.' }).click();
+    await expect(menu).not.toBeVisible();
+    await trigger.click();
+    await page.keyboard.press('Tab');
+    await expect(menu).not.toBeVisible();
+    await trigger.click();
+    await page.screenshot({ path: testInfo.outputPath('perfil-escritorio.png'), fullPage: true });
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.screenshot({ path: testInfo.outputPath('perfil-oscuro-movil.png'), fullPage: true });
+    await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+    expect(await page.locator('.profile-dropdown').evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      return rect.left >= 0 && rect.right <= window.innerWidth && node.scrollWidth <= node.clientWidth;
+    })).toBe(true);
+    await page.evaluate(() => { document.documentElement.style.fontSize = ''; });
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Cambiar a tema claro' }).click();
+    await trigger.click();
+    await page.screenshot({ path: testInfo.outputPath('perfil-claro-movil.png'), fullPage: true });
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Cambiar a tema oscuro' }).click();
+    await page.setViewportSize({ width: 1046, height: 775 });
+    await trigger.click();
+    await page.route('**/api/auth/logout', (route) => route.fulfill({
+      status: 503, json: { message: 'No se ha podido cerrar la sesión. Inténtalo de nuevo.' },
+    }));
+    await menu.getByRole('menuitem', { name: 'Cerrar sesión' }).click();
+    await expect(page.getByRole('alert')).toHaveText('No se ha podido cerrar la sesión. Inténtalo de nuevo.');
+    expect((await page.request.get('/api/auth/me')).status()).toBe(200);
+    await page.unroute('**/api/auth/logout');
+    await menu.getByRole('menuitem', { name: 'Cerrar sesión' }).click();
+    await expect(page.getByRole('heading', { name: 'Iniciar sesión' })).toBeVisible();
+    expect((await page.request.get('/api/auth/me')).status()).toBe(401);
+    await page.reload();
     await expect(page.getByRole('heading', { name: 'Iniciar sesión' })).toBeVisible();
     await page.getByLabel('Usuario / Correo electrónico').fill(email);
     await page.getByLabel('Contraseña', { exact: true }).fill('incorrecta');
@@ -34,6 +81,9 @@ test('registro, recarga, cierre de sesión y acceso con un usuario real', async 
     await page.getByRole('button', { name: 'Mostrar contraseña', exact: true }).click();
     await expect(page.getByLabel('Contraseña', { exact: true })).toHaveAttribute('type', 'text');
     await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
+    await expect(page.getByRole('img', { name: `Avatar de ${alias}` })).toBeVisible();
+    await page.getByRole('button', { name: 'Menú de perfil', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Perfil', exact: true }).click();
     await expect(page.getByRole('heading', { name: `Hola, ${alias}` })).toBeVisible();
     await page.getByRole('button', { name: 'Cerrar sesión' }).click();
     await expect(page.getByRole('heading', { name: 'Iniciar sesión' })).toBeVisible();
